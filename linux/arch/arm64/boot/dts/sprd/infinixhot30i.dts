@@ -3,6 +3,7 @@
 
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/usb/pd.h>
 #include "ums9230.dtsi"
 #include "sc2730.dtsi"
 
@@ -31,7 +32,7 @@
 		bootargs = "console=tty0 loglevel=8 ignore_loglevel clk_ignore_unused pd_ignore_unused regulator_ignore_unused";
 
 		linux,initrd-start = <0 0xc7000000>;
-		linux,initrd-end = <0 0xc70a4840>;
+		linux,initrd-end = <0 0xc7c38fcd>;
 
 		framebuffer {
 			compatible = "simple-framebuffer";
@@ -72,10 +73,6 @@
 	};
 };
 
-/*
- * Keep display disabled while debugging USB. This removes unrelated
- * probe failures and leaves more RAM for the initramfs.
- */
 &iommu_disp {
 	status = "disabled";
 };
@@ -99,10 +96,6 @@
 	status = "okay";
 };
 
-/*
- * The SC2730 regulator definition is too wide to reliably select 3.3 V.
- * The USB PHY supply is not fake: it is the real PMIC LDO.
- */
 &vddusb33 {
 	regulator-name = "vddusb33";
 	regulator-min-microvolt = <3300000>;
@@ -110,32 +103,48 @@
 	regulator-always-on;
 };
 
-/*
- * UMS9230 USB20 PHY.
- */
 &hsphy {
 	status = "okay";
 	phy-supply = <&vddusb33>;
 };
 
-/*
- * UMS9230 contains Spreadtrum MUSB, not DWC3.
- * Do not add vbus-supply or fake VBUS: this phone is the peripheral.
- */
+&pmic_typec_pd {
+	status = "okay";
+
+	connector {
+		compatible = "usb-c-connector";
+		label = "USB-C";
+		data-role = "device";
+		power-role = "sink";
+		sink-pdos = <PDO_FIXED(5000, 500, PDO_FIXED_USB_COMM)>;
+
+		port {
+			tcpc_hs_ep: endpoint {
+				remote-endpoint = <&usb_hs_ep>;
+			};
+		};
+	};
+};
+
 &usb {
 	status = "okay";
 	dr_mode = "peripheral";
-	maximum-speed = "high-speed";
-	phys = <&hsphy>;
+	usb-role-switch;
+	role-switch-default-mode = "peripheral";
+
+	port {
+		usb_hs_ep: endpoint {
+			remote-endpoint = <&tcpc_hs_ep>;
+		};
+	};
 };
 
-/* Storage */
 &ufs {
 	status = "okay";
 	vcc-supply = <&vddemmccore>;
 };
 
-/* SD card */
+
 &sdio0 {
 	status = "okay";
 	vmmc-supply = <&vddsdcore>;
@@ -154,7 +163,7 @@
 	sd-uhs-sdr50;
 };
 
-/* Keep GPU off while debugging */
+
 &gpu {
 	status = "disabled";
 };

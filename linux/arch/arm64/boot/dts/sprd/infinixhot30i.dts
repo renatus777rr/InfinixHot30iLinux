@@ -92,8 +92,29 @@
 &pwm {
 	status = "disabled";
 };
+
+/*
+ * The Hot 30i USB-C port is a USB 2.0 device port.  Keep the SC2730
+ * Type-C/PD controller enabled so it can detect CC attachment and provide
+ * the role-switch state to the USB controller.
+ */
 &pmic_typec_pd {
 	status = "okay";
+
+	connector {
+		compatible = "usb-c-connector";
+		label = "USB-C";
+		data-role = "device";
+		power-role = "sink";
+		try-power-role = "sink";
+		sink-pdos = <PDO_FIXED(5000, 500, PDO_FIXED_USB_COMM)>;
+
+		port {
+			tcpc_hs_ep: endpoint {
+				remote-endpoint = <&usb_hs_ep>;
+			};
+		};
+	};
 };
 
 &vddusb33 {
@@ -108,29 +129,13 @@
 	phy-supply = <&vddusb33>;
 };
 
-&pmic_typec_pd {
-	status = "okay";
-
-	connector {
-		compatible = "usb-c-connector";
-		label = "USB-C";
-		data-role = "device";
-		power-role = "sink";
-		sink-pdos = <PDO_FIXED(5000, 500, PDO_FIXED_USB_COMM)>;
-
-		port {
-			tcpc_hs_ep: endpoint {
-				remote-endpoint = <&usb_hs_ep>;
-			};
-		};
-	};
-};
-
 &usb {
 	status = "okay";
 	dr_mode = "peripheral";
+	maximum-speed = "high-speed";
 	usb-role-switch;
 	role-switch-default-mode = "peripheral";
+	phys = <&hsphy>;
 
 	port {
 		usb_hs_ep: endpoint {
@@ -143,7 +148,6 @@
 	status = "okay";
 	vcc-supply = <&vddemmccore>;
 };
-
 
 &sdio0 {
 	status = "okay";
@@ -162,7 +166,6 @@
 	sd-uhs-sdr104;
 	sd-uhs-sdr50;
 };
-
 
 &gpu {
 	status = "disabled";
